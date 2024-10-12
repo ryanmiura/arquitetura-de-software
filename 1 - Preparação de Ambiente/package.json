@@ -1,0 +1,11 @@
+{
+  "name": "preparacao-ambiente",
+  "version": "1.0.0",
+  "description": "![alt text](image.png)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
