@@ -1,6 +1,10 @@
 const Contato = require('./Contato');
 
 // Classe que gerencia uma lista de contatos (Composite)
+// O padrão Composite é utilizado para tratar objetos individuais (contatos)
+// e grupos de objetos (lista de contatos) de forma uniforme.
+// Isso permite adicionar e remover contatos de forma flexível,
+// sem precisar se preocupar com a estrutura da lista.
 class GerenciadorContatos {
     constructor() {
         this.contatos = [];
