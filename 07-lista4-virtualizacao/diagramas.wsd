@@ -1,0 +1,133 @@
+@startuml Component_Diagram
+left to right direction
+
+title Diagrama de Componentes: Tradicional vs Serverless
+
+package "Arquitetura Tradicional" {
+    [Frontend\n(React/Angular)] as frontend
+    [Backend Monolítico\n(Spring Boot)] as backend
+    [Banco de Dados\n(MySQL/PostgreSQL)] as database
+}
+
+cloud "Serviços Externos" {
+    [Servidor OAuth 2.0] as oauth
+    [Gateway de Pagamento] as payment_gateway
+}
+
+frontend --> backend : API REST
+backend --> database : JDBC/ORM
+backend --> oauth : Autenticação
+backend --> payment_gateway : Pagamentos
+
+package "Arquitetura Serverless" {
+    [API Gateway] as api_gateway
+    [Lambda\nProcessar Pedido] as lambda1
+    [Lambda\nCalcular Impostos] as lambda2
+    [Lambda\nValidar Pagamento] as lambda3
+    [DynamoDB] as dynamodb
+    [SQS/Kafka] as event_bus
+}
+
+api_gateway --> lambda1 : HTTP
+lambda1 --> event_bus : Evento Pedido
+event_bus --> lambda2 : Trigger
+event_bus --> lambda3 : Trigger
+lambda2 --> dynamodb : Atualização
+lambda3 --> dynamodb : Atualização
+lambda3 --> payment_gateway : Pagamentos
+
+@enduml
+
+@startuml Sequence_Diagram
+title Diagrama de Sequência: Fluxo de Processamento de Pedido
+
+actor Cliente as cliente
+
+box "Arquitetura Tradicional" #LightGray
+  participant Backend as backend
+  participant BancoDados as db
+end box
+
+== Fluxo Síncrono ==
+cliente -> backend : POST /pedido
+activate backend
+  backend -> backend : Validar Pedido
+  backend -> backend : Calcular Impostos
+  backend -> backend : Processar Pagamento
+  backend -> db : Persistir Dados
+  activate db
+  db --> backend
+  deactivate db
+cliente <-- backend : HTTP 200 OK
+deactivate backend
+
+box "Arquitetura Serverless" #LightBlue
+  participant "API Gateway" as apigw
+  participant "ProcessarPedido" as lambda1
+  participant "SQS/Kafka" as sqs
+  participant "CalcularImpostos" as lambda2
+  participant "ValidarPagamento" as lambda3
+  participant "DynamoDB" as ddb
+end box
+
+== Fluxo Assíncrono ==
+cliente -> apigw : POST /pedido
+activate apigw
+  apigw -> lambda1 : Invocar
+  activate lambda1
+    lambda1 --> apigw : HTTP 202 (Accepted)
+    lambda1 -> sqs : Publicar Evento
+  deactivate lambda1
+deactivate apigw
+
+sqs -> lambda2 : Trigger Evento
+activate lambda2
+  lambda2 -> ddb : Atualizar Impostos
+  lambda2 --> sqs : Confirmação
+deactivate lambda2
+
+sqs -> lambda3 : Trigger Evento
+activate lambda3
+  lambda3 -> payment_gateway : Processar Pagamento
+  lambda3 -> ddb : Atualizar Status
+  lambda3 --> sqs : Confirmação
+deactivate lambda3
+
+@enduml
+
+@startuml Deployment_Diagram
+title Diagrama de Implantação: Comparação de Infraestruturas
+
+node "Infraestrutura Tradicional" {
+    [Servidor Web\n(NGINX/Apache)] as web
+    [Servidor Aplicação\n(Tomcat/JVM)] as app
+    [Servidor DB\n(MySQL/PostgreSQL)] as db
+}
+
+web --> app : HTTP/API
+app --> db : Conexão JDBC
+
+node "Infraestrutura Serverless" {
+    [API Gateway] as apigw
+    [AWS Lambda] as lambda
+    [DynamoDB] as dynamodb
+    [SQS] as sqs
+}
+
+apigw --> lambda : Eventos HTTP
+lambda --> dynamodb : Conexão NoSQL
+lambda --> sqs : Mensagens
+
+node "Infraestrutura Virtualizada" {
+    [Pod Frontend] as pod1
+    [Pod Pedidos] as pod2
+    [Pod Pagamentos] as pod3
+    [Cluster PostgreSQL] as db_cluster
+}
+
+pod1 --> pod2 : API REST
+pod1 --> pod3 : API REST
+pod2 --> db_cluster : JDBC
+pod3 --> db_cluster : JDBC
+
+@enduml
